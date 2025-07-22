@@ -1,13 +1,13 @@
-package com.gisbackend.kafkastreamer;
+package com.gisbackend.buildingstreamer;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class KafkastreamerApplication {
+public class BuildingStreamerApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(KafkastreamerApplication.class, args);
+		SpringApplication.run(BuildingStreamerApplication.class, args);
 	}
 
 }

@@ -1,0 +1,12 @@
+spring:
+    application:
+        name: buildingstreamer
+server:
+    port: ${BUILDING_STREAMER_SERVER_PORT}
+logging:
+    level:
+        org:
+            springframework:
+                kafka: DEBUG
+            # apache:
+            #    kafka: DEBUG

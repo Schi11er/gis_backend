@@ -1,0 +1,135 @@
+package com.gisbackend.buildingstreamer.controller;
+
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.gisbackend.buildingstreamer.model.Address;
+import com.gisbackend.buildingstreamer.model.Building;
+import com.gisbackend.buildingstreamer.service.BuildingService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+@Tag(name = "Building Information", description = "Get Building Information")
+@RestController
+@RequestMapping("/api/buildings")
+public class BuildingController {
+
+    @Autowired
+    private BuildingService buildingService;
+
+    @Operation(summary = "Get all buildings")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", content = @Content(
+            mediaType = "application/json",
+            schema = @Schema(implementation = Building.class))),
+        @ApiResponse(responseCode = "404", description = "No buildings found")
+    })
+    @GetMapping
+    public ResponseEntity<List<Building>> getAllBuildings() {
+        List<Building> buildings = buildingService.getAllBuildings();
+        return ResponseEntity.ok(buildings);
+    }
+
+    @Operation(summary = "Get a building by its ID")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", content = @Content(
+            mediaType = "application/json",
+            schema = @Schema(implementation = Building.class))),
+        @ApiResponse(responseCode = "404", description = "Building not found")
+    })
+    @GetMapping("/{id}")
+    public ResponseEntity<Building> getBuildingById(@Parameter(description = "ID of the building to retrieve", required = true) @PathVariable String id) {
+        Building building = buildingService.getBuildingById(id);
+        if (building != null) {
+            return ResponseEntity.ok(building);
+        }
+        return ResponseEntity.notFound().build();
+    }
+    
+    @Operation(summary = "Get all cities with buildings")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", content = @Content(
+            mediaType = "application/json",
+            schema = @Schema(implementation = String.class))),
+        @ApiResponse(responseCode = "404", description = "No cities found")
+    })
+    @GetMapping("/cities")
+    public ResponseEntity<Set<String>> getAllCities() {
+        List<Building> buildings = buildingService.getAllBuildings();
+        Set<String> cities = buildings.stream()
+            .map(building -> building.getAddress().getCity())
+            .filter(city -> city != null && !city.isEmpty())
+            .collect(Collectors.toSet());
+        return ResponseEntity.ok(cities);
+    }
+
+    @Operation(summary = "Get all buildings in a specific city")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", content = @Content(
+            mediaType = "application/json",
+            schema = @Schema(implementation = Building.class))),
+        @ApiResponse(responseCode = "404", description = "No buildings found in the specified city")
+    })
+    @GetMapping("/by-city/{city}")
+    public ResponseEntity<List<Building>> getBuildingsByCity(@Parameter(description = "City to filter buildings", required = true) @PathVariable String city) {
+        List<Building> buildings = buildingService.getBuildingsByCity(city);
+        return ResponseEntity.ok(buildings);
+    }
+
+    @Operation(summary = "Get all buildings with a specific energy efficiency class")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", content = @Content(
+            mediaType = "application/json",
+            schema = @Schema(implementation = Building.class))),
+        @ApiResponse(responseCode = "404", description = "No buildings found with the specified energy class")
+    })
+    @GetMapping("/by-energy-class/{energyClass}")
+    public ResponseEntity<List<Building>> getBuildingsByEnergyClass(@Parameter(description = "Energy class to filter buildings", required = true) @PathVariable String energyClass) {
+        List<Building> buildings = buildingService.getBuildingsByEnergyClass(energyClass);
+        return ResponseEntity.ok(buildings);
+    }
+
+    @Tag(name = "Statistics", description = "Get Building Statistics")
+    @Operation(summary = "Get building count by type")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", content = @Content(
+            mediaType = "application/json",
+            schema = @Schema(implementation = java.util.Map.class))),
+        @ApiResponse(responseCode = "404", description = "No buildings found")
+    })
+    @GetMapping("/statistics/by-building-type")
+    public ResponseEntity<java.util.Map<String, Long>> getBuildingCountByType() {
+        java.util.Map<String, Long> statistics = buildingService.getBuildingCountByType();
+        return ResponseEntity.ok(statistics);
+    }
+
+    @Operation(summary = "Get address by building ID")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", content = @Content(
+            mediaType = "application/json",
+            schema = @Schema(implementation = Address.class))),
+        @ApiResponse(responseCode = "404", description = "Building not found")
+    })
+    @GetMapping("/address/{id}")
+    public ResponseEntity<Address> getAddressByBuildingId(@Parameter(description = "ID of the building to retrieve address", required = true) @PathVariable String id) {
+        Address address = buildingService.getAddressByBuildingId(id);
+        if (address != null) {
+            return ResponseEntity.ok(address);
+        }
+        return ResponseEntity.notFound().build();
+    }
+}

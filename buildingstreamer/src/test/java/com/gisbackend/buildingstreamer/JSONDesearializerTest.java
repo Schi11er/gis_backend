@@ -1,8 +1,8 @@
-package com.gisbackend.kafkastreamer;
+package com.gisbackend.buildingstreamer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.gisbackend.kafkastreamer.model.GraphDataModel;
-import com.gisbackend.kafkastreamer.model.GraphDataModelsWrapper;
+import com.gisbackend.buildingstreamer.model.GraphDataModel;
+import com.gisbackend.buildingstreamer.model.GraphDataModelsWrapper;
 
 import org.junit.jupiter.api.Test;
 import java.io.InputStream;

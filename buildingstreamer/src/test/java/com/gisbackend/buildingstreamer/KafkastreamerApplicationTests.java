@@ -1,10 +1,10 @@
-package com.gisbackend.kafkastreamer;
+package com.gisbackend.buildingstreamer;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class KafkastreamerApplicationTests {
+class BuildingStreamerApplicationTests {
 
 	@Test
 	void contextLoads() {

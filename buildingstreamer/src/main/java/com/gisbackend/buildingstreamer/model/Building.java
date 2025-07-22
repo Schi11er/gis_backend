@@ -1,4 +1,4 @@
-package com.gisbackend.kafkastreamer.model;
+package com.gisbackend.buildingstreamer.model;
 
 import lombok.Data;
 

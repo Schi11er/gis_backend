@@ -1,31 +1,30 @@
-package com.gisbackend.kafkastreamer;
+package com.gisbackend.buildingstreamer.service;
 
-import java.util.Map;
-import java.util.Set;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.gisbackend.kafkastreamer.model.Address;
-import com.gisbackend.kafkastreamer.model.Building;
-import com.gisbackend.kafkastreamer.model.GraphDataModel;
-import com.gisbackend.kafkastreamer.model.GraphDataModelsWrapper;
+import com.gisbackend.buildingstreamer.model.Address;
+import com.gisbackend.buildingstreamer.model.Building;
+import com.gisbackend.buildingstreamer.model.GraphDataModelsWrapper;
 
 @Service
 public class KafkaService {
 
-    @KafkaListener(topics = "ekkodale.gaeco.instance.public.74874fdf-e500-4b23-abae-a74008e58436.gaecoExport", groupId = "gis_group", containerFactory = "graphModelListener")
+    @Autowired
+    private BuildingService buildingService;
+
+    @KafkaListener(topics = "${KAFKA_TOPIC}", groupId = "gis_group", containerFactory = "graphModelListener")
     public void publish(GraphDataModelsWrapper wrapper) {
         // Process the received GraphDataModel
-        GraphDataModel graphDataModel = wrapper.getGraphDataModels().get(0);
-        System.out.println("Received GraphDataModel: " +
-        graphDataModel.getGraphTemplate());
+        // GraphDataModel graphDataModel = wrapper.getGraphDataModels().get(0);
+        // System.out.println("Received GraphDataModel: " +
+        // graphDataModel.getGraphTemplate());
        
         List<Building> buildings = new ArrayList<>();
         ObjectMapper mapper = new ObjectMapper();
@@ -33,7 +32,7 @@ public class KafkaService {
         
         // Convert GraphDataModel to Building and Address objects
         wrapper.getGraphDataModels().forEach(model -> {
-            System.out.println("Processing GraphDataModel with template: " + model.getGraphTemplate());
+            // System.out.println("Processing GraphDataModel with template: " + model.getGraphTemplate());
             final Address[] addressWrapper = { new Address() };
             final Building[] buildingWrapper = { new Building() };
             model.getGraphMetadata().forEach(metaDataNode -> {
@@ -49,11 +48,12 @@ public class KafkaService {
             // Set the address for the building and store it in the list
             buildingWrapper[0].setAddress(addressWrapper[0]);
             buildings.add(buildingWrapper[0]);
+            buildingService.addBuilding(buildingWrapper[0]);
         });
    
-        buildings.forEach(building -> {
-            System.out.println("Street: " + building.getAddress().getStreetName());
-        });
+        // buildings.forEach(building -> {
+        //     System.out.println("Street: " + building.getAddress().getStreetName());
+        // });
 
     }
 

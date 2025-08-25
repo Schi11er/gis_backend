@@ -1,6 +1,7 @@
 package com.gisbackend.buildingstreamer.controller;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -8,11 +9,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.gisbackend.buildingstreamer.model.Address;
 import com.gisbackend.buildingstreamer.model.Building;
+import com.gisbackend.buildingstreamer.model.BuildingAttributeRequest;
 import com.gisbackend.buildingstreamer.service.BuildingService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -131,5 +135,29 @@ public class BuildingController {
             return ResponseEntity.ok(address);
         }
         return ResponseEntity.notFound().build();
+    }
+
+    @Operation(summary = "Add additional attributes to a building")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Attributes successfully added"),
+        @ApiResponse(responseCode = "404", description = "Building not found"),
+        @ApiResponse(responseCode = "400", description = "Invalid request")
+    })
+    @PostMapping("/{id}/attributes")
+    public ResponseEntity<String> addAttributesToBuilding(
+            @Parameter(description = "ID of the building to add attributes to", required = true) 
+            @PathVariable String id,
+            @RequestBody BuildingAttributeRequest request) {
+        
+        if (request == null || request.getAttributes() == null || request.getAttributes().isEmpty()) {
+            return ResponseEntity.badRequest().body("Attributes cannot be empty");
+        }
+        
+        boolean success = buildingService.addAttributesToBuilding(id, request.getAttributes());
+        if (success) {
+            return ResponseEntity.ok("Attributes successfully added to building with ID: " + id);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 }

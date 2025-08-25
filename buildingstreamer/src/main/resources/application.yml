@@ -1,8 +1,18 @@
 spring:
     application:
         name: buildingstreamer
+    kafka:
+        bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+        consumer:
+            group-id: gis_group
+            auto-offset-reset: earliest
+            enable-auto-commit: true
+            auto-commit-interval: 1000ms
+        producer:
+            retries: 3
+            acks: all
 server:
-    port: ${BUILDING_STREAMER_SERVER_PORT}
+    port: ${BUILDING_STREAMER_SERVER_PORT:8080}
 logging:
     level:
         org:
@@ -10,3 +20,13 @@ logging:
                 kafka: DEBUG
             # apache:
             #    kafka: DEBUG
+
+# Actuator für Health Checks
+management:
+    endpoints:
+        web:
+            exposure:
+                include: health,info,metrics
+    endpoint:
+        health:
+            show-details: always

@@ -12,17 +12,20 @@ import io.swagger.v3.oas.models.servers.Server;
 @Configuration
 public class OpenApiConfiguration {
 
-    @Value("${KAFKA_BROKER_URL}")
+    @Value("${KAFKA_BROKER_URL:localhost:9092}")
     private String kafkaBrokerUrl;
 
-    @Value("${BUILDING_STREAMER_SERVER_PORT}")
+    @Value("${BUILDING_STREAMER_EXTERNAL_PORT:1111}")
     private String serverPort;
     
     @Bean
     public OpenAPI defineOpenApi() {
+        // Extract host from Kafka broker URL (format: host:port)
+        String host = kafkaBrokerUrl.split(":")[0];
+        
         Server server = new Server();
-        server.setUrl("http://" + kafkaBrokerUrl + ":" + serverPort);
-        server.setDescription("Local development server");
+        server.setUrl("http://" + host + ":" + serverPort);
+        server.setDescription("Development server");
 
         Contact contact = new Contact();
         contact.setName("Sebastian Schilling");

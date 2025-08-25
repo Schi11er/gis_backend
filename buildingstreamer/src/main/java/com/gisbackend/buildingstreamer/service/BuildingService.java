@@ -10,6 +10,9 @@ import org.springframework.stereotype.Service;
 import com.gisbackend.buildingstreamer.model.Address;
 import com.gisbackend.buildingstreamer.model.Building;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 public class BuildingService {
 
@@ -52,5 +55,19 @@ public class BuildingService {
     public Address getAddressByBuildingId(String id) {
         Building building = buildingStorage.get(id);
         return (building != null) ? building.getAddress() : null;
+    }
+
+    public boolean addAttributesToBuilding(String buildingId, Map<String, String> attributes) {
+        Building building = buildingStorage.get(buildingId);
+        if (building != null) {
+            if (building.getAdditionalAttributes() == null) {
+                building.setAdditionalAttributes(new java.util.HashMap<>());
+            }
+            building.getAdditionalAttributes().putAll(attributes);
+            log.info("Added attributes to building with ID: {}", buildingId);
+            log.info("Current attributes: {}", building.getAdditionalAttributes());
+            return true;
+        }
+        return false;
     }
 }

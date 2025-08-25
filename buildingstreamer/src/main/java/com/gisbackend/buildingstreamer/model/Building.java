@@ -1,5 +1,8 @@
 package com.gisbackend.buildingstreamer.model;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import lombok.Data;
 
 @Data
@@ -15,4 +18,5 @@ public class Building {
     private String energyEfficiencyClass;
     private String primaryTypeOfBuilding;
     private Address address;
+    private Map<String, String> additionalAttributes = new HashMap<>();
 }

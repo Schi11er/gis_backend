@@ -43,7 +43,7 @@ services:
     build:
       context: ./buildingstreamer
       dockerfile: Dockerfile
-    image: buildingstreamer:latest
+    image: schi11er/portfoliobim_info_backend:latest
     container_name: ${BUILDING_STREAMER_CONTAINER_NAME}
     hostname: ${BUILDING_STREAMER_HOSTNAME}
     ports:
@@ -60,7 +60,7 @@ services:
     restart: unless-stopped
 
   infomap:
-    image: infomap:latest
+    image: schi11er/portfoliobim_infomap:latest
     container_name: infomap
     ports:
       - "${INFOMAP_PORT}:80"

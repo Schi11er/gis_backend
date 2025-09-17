@@ -5,15 +5,26 @@ import java.util.*;
 import java.util.regex.*;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class GraphDataModel {
+
+    @JsonProperty("GraphTemplate")
     private String graphTemplate;
+
+    @JsonProperty("GraphData")
     private String graphData;
+
+    @JsonProperty("GraphMetadata")
     private List<MetaDataNode> graphMetadata;
-    // private List<AccessRight> accessRights;
-    // private UseCase useCase;
+
+    @JsonProperty("AccessRights")
+    private List<AccessRight> accessRights;
+
+    @JsonProperty("UseCase")
+    private UseCase useCase;
 
     public String getGraphTemplate() {
         return graphTemplate;
@@ -39,21 +50,21 @@ public class GraphDataModel {
         }
     }
 
-    // public List<AccessRight> getAccessRights() {
-    //     return accessRights;
-    // }
+    public List<AccessRight> getAccessRights() {
+        return accessRights;
+    }
 
-    // public void setAccessRights(List<AccessRight> accessRights) {
-    //     this.accessRights = accessRights;
-    // }
+    public void setAccessRights(List<AccessRight> accessRights) {
+        this.accessRights = accessRights;
+    }
 
-    // public UseCase getUseCase() {
-    //     return useCase;
-    // }
+    public UseCase getUseCase() {
+        return useCase;
+    }
 
-    // public void setUseCase(UseCase useCase) {
-    //     this.useCase = useCase;
-    // }
+    public void setUseCase(UseCase useCase) {
+        this.useCase = useCase;
+    }
 
     public List<MetaDataNode> getGraphMetadata() {
         return graphMetadata;

@@ -2,17 +2,22 @@ package com.gisbackend.buildingstreamer.service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
-
+import java.util.UUID;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gisbackend.buildingstreamer.model.AccessRight;
 import com.gisbackend.buildingstreamer.model.Address;
 import com.gisbackend.buildingstreamer.model.Building;
-import com.gisbackend.buildingstreamer.model.GraphDataModelsWrapper;
+import com.gisbackend.buildingstreamer.model.GeoCoordinate;
+import com.gisbackend.buildingstreamer.model.GraphDataModel;
+import com.gisbackend.buildingstreamer.model.MetaDataNode;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -25,89 +30,167 @@ public class KafkaService {
 
     @Autowired
     private NominatimService nominatimService;
-    
-    // Compile regex patterns once for better performance
-    private static final Pattern STREET_CORRECTIONS = Pattern.compile("(?i)(strafe|straBe|strae|strage|stratle)", Pattern.CASE_INSENSITIVE);
-    private static final Pattern STRASSE_DUPLICATES = Pattern.compile("(?i)(Straße)(aße|ate)", Pattern.CASE_INSENSITIVE);
-    private static final Pattern GROSSE_CORRECTIONS = Pattern.compile("(?i)(Gro)(fe|Be)", Pattern.CASE_INSENSITIVE);
+
+    @Autowired
+    private KafkaTemplate<String, String> kafkaTemplate;
+
+    @Autowired
+    private AccessRightsService accessRightsService;
+
+    @Value("${KAFKA_TOPIC}")
+    private String kafkaTopic;
 
     @KafkaListener(topics = "${KAFKA_TOPIC}", groupId = "gis_group", containerFactory = "graphModelListener")
-    public void publish(GraphDataModelsWrapper wrapper) {
+    public void publish(GraphDataModel graphDataModel, ConsumerRecord<?, ?> record) {
         try {
-            log.info("Processing Kafka message with {} models", wrapper.getGraphDataModels().size());
-            
+            log.info("Processing Kafka message with Offset: {}", record.offset());
+
             // Process the received GraphDataModel
             List<Building> buildings = new ArrayList<>();
             ObjectMapper mapper = new ObjectMapper();
             mapper.setConfig(mapper.getDeserializationConfig().with(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES));
-            
-            // Convert GraphDataModel to Building and Address objects
-            wrapper.getGraphDataModels().forEach(model -> {
+
+            // Initialize variables outside the loop
+            Address address = null;
+            Building building = null;
+            GeoCoordinate geoCoordinate = null;
+
+            // Process metadata nodes
+            for (MetaDataNode metaDataNode : graphDataModel.getGraphMetadata()) {
                 try {
-                    final Address[] addressWrapper = { new Address() };
-                    final Building[] buildingWrapper = { new Building() };
-                    
-                    model.getGraphMetadata().forEach(metaDataNode -> {
-                        try {
-                            if (metaDataNode.getClassType().equals("https://ibpdi.datacat.org/class/Address")) {
-                                addressWrapper[0] = mapper.convertValue(metaDataNode.getPropertiesValues(), Address.class);
-                                addressWrapper[0].setId(metaDataNode.getId());
-                                
-                                addressWrapper[0].setStreetName(correctStreet(addressWrapper[0].getStreetName()));
-                                // Enrich address with coordinates if missing
-                                try {
-                                    addressWrapper[0] = nominatimService.enrichAddressWithCoordinates(addressWrapper[0]);
-                                } catch (Exception e) {
-                                    log.warn("Failed to enrich address {} with coordinates: {}", addressWrapper[0].getId(), e.getMessage());
-                                    // Continue processing without coordinates
-                                }
-        
-                            } else if (metaDataNode.getClassType().equals("https://ibpdi.datacat.org/class/Building")) {
-                                buildingWrapper[0] = mapper.convertValue(metaDataNode.getPropertiesValues(), Building.class);
-                                buildingWrapper[0].setId(metaDataNode.getId());
+                    if (metaDataNode.getClassType().equals("https://ibpdi.datacat.org/class/Address")) {
+                        address = mapper.convertValue(metaDataNode.getPropertiesValues(), Address.class);
+                        address.setId(metaDataNode.getId());
+
+                        if (address.getDeprecatedLatitude() == null || address.getDeprecatedLongitude() == null) {
+                            try {
+                                log.warn("Address {} is missing coordinates, attempting to enrich...", address.getId());
+                                address = nominatimService.enrichAddressWithCoordinates(address);
+                            } catch (Exception e) {
+                                log.warn("Failed to enrich address {} with coordinates: {}", address.getId(),
+                                        e.getMessage());
                             }
-                        } catch (Exception e) {
-                            log.error("Error processing metadata node {}: {}", metaDataNode.getId(), e.getMessage());
                         }
-                    });
-                    
-                    // Set the address for the building and store it in the list
-                    buildingWrapper[0].setAddress(addressWrapper[0]);
-                    buildings.add(buildingWrapper[0]);
-                    
-                    // Only add building if it doesn't already exist (prevent duplicate processing)
-                    if (buildingService.getBuildingById(buildingWrapper[0].getId()) == null) {
-                        buildingService.addBuilding(buildingWrapper[0]);
-                        log.debug("Added new building with ID: {}", buildingWrapper[0].getId());
-                    } else {
-                        log.debug("Building with ID {} already exists, skipping...", buildingWrapper[0].getId());
+                    } else if (metaDataNode.getClassType().equals("https://ibpdi.datacat.org/class/Building")) {
+                        building = mapper.convertValue(metaDataNode.getPropertiesValues(), Building.class);
+                        building.setId(metaDataNode.getId());
+                    } else if (metaDataNode.getClassType().equals("https://ibpdi.datacat.org/class/GeoCoordinate")) {
+                        geoCoordinate = mapper.convertValue(metaDataNode.getPropertiesValues(), GeoCoordinate.class);
+                        geoCoordinate.setId(metaDataNode.getId());
                     }
+
                 } catch (Exception e) {
-                    log.error("Error processing building model: {}", e.getMessage());
+                    log.error("Error processing metadata node {}: {}", metaDataNode.getId(), e.getMessage());
                 }
-            });
-            
+            }
+
+            // Create GeoCoordinate if missing
+            if (geoCoordinate == null && address != null
+                    && address.getDeprecatedLatitude() != null
+                    && address.getDeprecatedLongitude() != null) {
+                geoCoordinate = new GeoCoordinate();
+                geoCoordinate.setId(UUID.randomUUID().toString());
+                geoCoordinate.setLatitude(address.getDeprecatedLatitude());
+                geoCoordinate.setLongitude(address.getDeprecatedLongitude());
+                geoCoordinate.setCoordinateReferenceSystem("EPSG:4326");
+
+                // Send GeoCoordinate to Kafka
+                sendGeoCoordinate(geoCoordinate, graphDataModel, address.getId());
+            }
+
+            // Link Address, GeoCoordinate and Building
+            if (address != null && building != null) {
+                address.setGeoCoordinate(geoCoordinate);
+                building.setAddress(address);
+                buildings.add(building);
+
+                buildingService.addBuilding(building);
+                buildingService.saveGraphDataModelForBuilding(building.getId(), graphDataModel);
+                log.debug("Added or replaced building with ID: {}", building.getId());
+            }
+
+            // Add AccessRights from graphDataModel if not already present
+            if (graphDataModel.getAccessRights() != null) {
+                for (AccessRight accessRight : graphDataModel.getAccessRights()) {
+                    boolean exists = accessRightsService.getAllAccessRights().stream()
+                        .anyMatch(existing -> existing.getId().equals(accessRight.getId()));
+                    if (!exists) {
+                        accessRightsService.addAccessRight(accessRight);
+                        log.info("Added new AccessRight with ID: {}", accessRight.getId());
+                    }
+                }
+            }
+
             log.info("Successfully processed {} buildings from Kafka message", buildings.size());
-            
+
         } catch (Exception e) {
             log.error("Critical error processing Kafka message: {}", e.getMessage(), e);
-            // Even if there's an error, we don't want to retry the message indefinitely
-            // The message will be marked as processed to prevent endless retries
         }
     }
 
+    public void sendGeoCoordinate(GeoCoordinate geoCoordinate, GraphDataModel graphDataModel, String addressId) {
+        try {
+            // Create MetaDataNode for GeoCoordinate
+            MetaDataNode geoCoordinateNode = new MetaDataNode();
+            geoCoordinateNode.setId(geoCoordinate.getId());
+            geoCoordinateNode.setClassType("https://ibpdi.datacat.org/class/GeoCoordinate");
 
-    public String correctStreet(String streetName) {
-        // Korrigiere verschiedene falsche Schreibweisen von "straße" mit einem Pattern
-        streetName = STREET_CORRECTIONS.matcher(streetName).replaceAll("straße");
-        
-        // Korrigiere doppelte Endungen nach "Straße" 
-        streetName = STRASSE_DUPLICATES.matcher(streetName).replaceAll("$1");
-        
-        // Korrigiere verschiedene falsche Schreibweisen von "Große"
-        streetName = GROSSE_CORRECTIONS.matcher(streetName).replaceAll("$1ße");
+            // Set properties for GeoCoordinate
+            geoCoordinateNode.getPropertiesValues().put("Latitude", geoCoordinate.getLatitude());
+            geoCoordinateNode.getPropertiesValues().put("Longitude", geoCoordinate.getLongitude());
+            geoCoordinateNode.getPropertiesValues().put("CoordinateReferenceSystem", geoCoordinate.getCoordinateReferenceSystem());
 
-        return streetName;
+            // Add the MetaDataNode to the provided GraphDataModel
+            graphDataModel.getGraphMetadata().add(geoCoordinateNode);
+            String graph = graphDataModel.getGraphData() + "\ninst:" + addressId + " <https://ibpdi.datacat.org/class/hasGeoCoordinate> inst:" + geoCoordinate.getId() + ".\n";
+            graphDataModel.setGraphData(graph);
+
+            // Convert GraphDataModel to JSON
+            ObjectMapper mapper = new ObjectMapper();
+            String message = mapper.writeValueAsString(graphDataModel);
+
+            // Send the structured message
+            kafkaTemplate.send(kafkaTopic, message);
+            log.info("Sent structured GeoCoordinate message to Kafka topic {}", kafkaTopic);
+        } catch (Exception e) {
+            log.error("Failed to send structured GeoCoordinate message: {}", e.getMessage());
+        }
+    }
+
+    public void sendBuildingAttributes(Building building) {
+        try {
+            GraphDataModel graphDataModel = buildingService.getGraphDataModelForBuilding(building.getId());
+
+            // Find the MetaDataNode for the building
+            MetaDataNode buildingAttributesNode = graphDataModel.getGraphMetadata().stream()
+                .filter(node -> node.getId().equals(building.getId()))
+                .findFirst()
+                .orElse(null);
+
+            if (buildingAttributesNode == null) {
+                log.warn("No MetaDataNode found for building with ID: {}", building.getId());
+                return;
+            }
+
+            // Set additional attributes as properties
+            if (building.getAdditionalAttributes() != null) {
+                building.getAdditionalAttributes().forEach((key, value) -> {
+                    if (!buildingAttributesNode.getPropertiesValues().containsKey(key)) {
+                        buildingAttributesNode.getPropertiesValues().put(key, value);
+                    }
+                });
+            }
+
+            // Convert GraphDataModel to JSON
+            ObjectMapper mapper = new ObjectMapper();
+            String message = mapper.writeValueAsString(graphDataModel);
+
+            // Send the structured message
+            kafkaTemplate.send(kafkaTopic, message);
+            log.info("Sent structured BuildingAttributes message to Kafka topic {}", kafkaTopic);
+        } catch (Exception e) {
+            log.error("Failed to send structured BuildingAttributes message: {}", e.getMessage());
+        }
     }
 
 

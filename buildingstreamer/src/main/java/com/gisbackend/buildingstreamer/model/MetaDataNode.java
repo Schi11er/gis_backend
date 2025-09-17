@@ -2,11 +2,17 @@ package com.gisbackend.buildingstreamer.model;
 
 import java.util.*;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class MetaDataNode {
+
+    @JsonProperty("Id")
     private String id;
 
+    @JsonProperty("ClassType")
     private String classType;
 
+    @JsonProperty("PropertiesValues")
     private Map<String, String> propertiesValues;
 
     public MetaDataNode() {

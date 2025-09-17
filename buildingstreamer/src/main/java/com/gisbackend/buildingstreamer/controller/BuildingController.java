@@ -1,7 +1,6 @@
 package com.gisbackend.buildingstreamer.controller;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -12,11 +11,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.gisbackend.buildingstreamer.model.AccessRight;
 import com.gisbackend.buildingstreamer.model.Address;
 import com.gisbackend.buildingstreamer.model.Building;
 import com.gisbackend.buildingstreamer.model.BuildingAttributeRequest;
+import com.gisbackend.buildingstreamer.service.AccessRightsService;
 import com.gisbackend.buildingstreamer.service.BuildingService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,7 +28,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Tag(name = "Building Information", description = "Get Building Information")
 @RestController
 @RequestMapping("/api/buildings")
@@ -34,6 +38,9 @@ public class BuildingController {
 
     @Autowired
     private BuildingService buildingService;
+    
+    @Autowired
+    private AccessRightsService accessRightsService;
 
     @Operation(summary = "Get all buildings")
     @ApiResponses({
@@ -159,5 +166,36 @@ public class BuildingController {
         } else {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    @Operation(summary = "Get AccessRights by GuidelineClassificationId")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", content = @Content(
+            mediaType = "application/json",
+            schema = @Schema(implementation = AccessRight.class))),
+        @ApiResponse(responseCode = "404", description = "No AccessRights found for the specified GuidelineClassificationId")
+    })
+    @GetMapping("/access-rights/class")
+    public ResponseEntity<List<AccessRight>> getAccessRightsByClass(
+            @Parameter(description = "ClassUri to filter AccessRights", required = true)
+            @RequestParam String classUri) {
+        log.info("Fetching AccessRights for ClassUri: {}", classUri);
+        List<AccessRight> accessRights = accessRightsService.getAccessRightsByGuidelineClassificationId(classUri);
+        if (accessRights != null && !accessRights.isEmpty()) {
+            return ResponseEntity.ok(accessRights);
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    @Operation(summary = "Get all AccessRights")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", content = @Content(
+            mediaType = "application/json",
+            schema = @Schema(implementation = AccessRight.class)))
+    })
+    @GetMapping("/access-rights")
+    public ResponseEntity<List<AccessRight>> getAllAccessRights() {
+        List<AccessRight> accessRights = accessRightsService.getAllAccessRights();
+        return ResponseEntity.ok(accessRights);
     }
 }

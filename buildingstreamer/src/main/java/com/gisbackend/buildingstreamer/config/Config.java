@@ -18,7 +18,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.web.client.RestTemplate;
 
-import com.gisbackend.buildingstreamer.model.GraphDataModelsWrapper;
+import com.gisbackend.buildingstreamer.model.GraphDataModel;
 
 @Configuration
 @EnableKafka
@@ -30,7 +30,7 @@ public class Config {
     private String kafkaBootstrapServers;
 
     @Bean
-    public ConsumerFactory<String, GraphDataModelsWrapper> graphModelConsumer() {
+    public ConsumerFactory<String, GraphDataModel> graphModelConsumer() {
         Map<String, Object> props = Map.of(
             ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBootstrapServers,
             ConsumerConfig.GROUP_ID_CONFIG, "gis_group",
@@ -43,7 +43,7 @@ public class Config {
             ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1
         );
 
-            JsonDeserializer<GraphDataModelsWrapper> deserializer = new JsonDeserializer<>(GraphDataModelsWrapper.class);
+            JsonDeserializer<GraphDataModel> deserializer = new JsonDeserializer<>(GraphDataModel.class);
     deserializer.addTrustedPackages("*");
 
         return new DefaultKafkaConsumerFactory<>(
@@ -54,18 +54,23 @@ public class Config {
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, GraphDataModelsWrapper> graphModelListener() {
-        ConcurrentKafkaListenerContainerFactory<String, GraphDataModelsWrapper> factory = new ConcurrentKafkaListenerContainerFactory<>();
+    public ConcurrentKafkaListenerContainerFactory<String, GraphDataModel> graphModelListener() {
+        ConcurrentKafkaListenerContainerFactory<String, GraphDataModel> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(graphModelConsumer());
         
         // Configure error handling and retry behavior
         factory.setCommonErrorHandler(new org.springframework.kafka.listener.DefaultErrorHandler(
             (record, exception) -> {
-                // Log the error but don't retry endlessly
-                logger.error("Error processing record: {} - Exception: {}", record, exception.getMessage());
+                logger.error("Error processing record with Offset {}: {} - Exception: {}", 
+                    record.offset(), record.value(), exception.getMessage());
             },
             new org.springframework.util.backoff.FixedBackOff(0L, 0L) // No retries
         ));
+
+        // factory.setRecordInterceptor((record, consumer) -> {
+        //     logger.info("Raw Kafka message before deserialization: {}", record.value());
+        //     return record;
+        // });
         
         return factory;
     }

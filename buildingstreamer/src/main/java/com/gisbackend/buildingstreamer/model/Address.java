@@ -11,7 +11,8 @@ public class Address {
     private String postalCode;
     private String streetName;
     private String houseNumber;
-    private String lat;
-    private String lon;
+    private String deprecatedLatitude;
+    private String deprecatedLongitude;
+    private GeoCoordinate geoCoordinate;
 
 }

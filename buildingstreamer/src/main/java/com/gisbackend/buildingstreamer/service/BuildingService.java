@@ -1,14 +1,18 @@
 package com.gisbackend.buildingstreamer.service;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import com.gisbackend.buildingstreamer.model.Address;
 import com.gisbackend.buildingstreamer.model.Building;
+import com.gisbackend.buildingstreamer.model.GraphDataModel;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -17,6 +21,11 @@ import lombok.extern.slf4j.Slf4j;
 public class BuildingService {
 
     private final Map<String, Building> buildingStorage = new ConcurrentHashMap<>();
+    private final Map<String, GraphDataModel> buildingGraphDataStorage = new HashMap<>();
+
+    @Lazy
+    @Autowired
+    private KafkaService kafkaService;
 
     public void addBuilding(Building building) {
         buildingStorage.put(building.getId(), building);
@@ -66,8 +75,21 @@ public class BuildingService {
             building.getAdditionalAttributes().putAll(attributes);
             log.info("Added attributes to building with ID: {}", buildingId);
             log.info("Current attributes: {}", building.getAdditionalAttributes());
+
+            // Notify KafkaService to send updated attributes
+            kafkaService.sendBuildingAttributes(building);
+
             return true;
         }
         return false;
+    }
+
+    public void saveGraphDataModelForBuilding(String buildingId, GraphDataModel graphDataModel) {
+        buildingGraphDataStorage.put(buildingId, graphDataModel);
+        log.info("Saved GraphDataModel for building with ID: {}", buildingId);
+    }
+
+    public GraphDataModel getGraphDataModelForBuilding(String buildingId) {
+        return buildingGraphDataStorage.get(buildingId);
     }
 }

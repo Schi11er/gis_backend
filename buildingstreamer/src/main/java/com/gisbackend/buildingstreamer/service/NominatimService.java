@@ -63,8 +63,8 @@ public class NominatimService {
             
             if (responses != null && responses.length > 0) {
                 NominatimResponse bestMatch = responses[0]; // Take the first (best) result
-                address.setLat(bestMatch.getLat());
-                address.setLon(bestMatch.getLon());
+                address.setDeprecatedLatitude(bestMatch.getLat());
+                address.setDeprecatedLongitude(bestMatch.getLon());
                 // logger.info("Successfully geocoded address {} - lat: {}, lon: {}", 
                     // address.getId(), bestMatch.getLat(), bestMatch.getLon());
             } else {
@@ -83,8 +83,8 @@ public class NominatimService {
      * Checks if an address already has coordinates.
      */
     private boolean hasCoordinates(Address address) {
-        return address.getLat() != null && !address.getLat().trim().isEmpty() &&
-               address.getLon() != null && !address.getLon().trim().isEmpty();
+        return address.getDeprecatedLatitude() != null && !address.getDeprecatedLatitude().trim().isEmpty() &&
+               address.getDeprecatedLongitude() != null && !address.getDeprecatedLongitude().trim().isEmpty();
     }
 
     /**

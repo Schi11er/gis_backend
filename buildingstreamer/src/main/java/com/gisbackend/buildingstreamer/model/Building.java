@@ -1,5 +1,6 @@
 package com.gisbackend.buildingstreamer.model;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -9,6 +10,7 @@ import lombok.Data;
 public class Building {
     
     private String id;
+    private String buildingId;
     private String name;
     private String validFrom;
     private String buildingCode;
@@ -19,4 +21,17 @@ public class Building {
     private String primaryTypeOfBuilding;
     private Address address;
     private Map<String, String> additionalAttributes = new HashMap<>();
+
+    @JsonAnySetter
+    public void setAdditionalAttribute(String key, String value) {
+        this.additionalAttributes.put(key, value);
+    }
+
+    public Map<String, String> getAdditionalAttributes() {
+        return additionalAttributes;
+    }
+
+    public void setAdditionalAttributes(Map<String, String> additionalAttributes) {
+        this.additionalAttributes = additionalAttributes;
+    }
 }

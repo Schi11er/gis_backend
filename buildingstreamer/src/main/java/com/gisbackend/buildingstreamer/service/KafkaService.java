@@ -150,7 +150,8 @@ public class KafkaService {
             String message = mapper.writeValueAsString(graphDataModel);
 
             // Send the structured message
-            kafkaTemplate.send(kafkaTopic, message);
+            String key = UUID.randomUUID().toString();
+            kafkaTemplate.send(kafkaTopic, key, message);
             log.info("Sent structured GeoCoordinate message to Kafka topic {}", kafkaTopic);
         } catch (Exception e) {
             log.error("Failed to send structured GeoCoordinate message: {}", e.getMessage());
@@ -186,7 +187,8 @@ public class KafkaService {
             String message = mapper.writeValueAsString(graphDataModel);
 
             // Send the structured message
-            kafkaTemplate.send(kafkaTopic, message);
+            String key = UUID.randomUUID().toString();
+            kafkaTemplate.send(kafkaTopic, key, message);
             log.info("Sent structured BuildingAttributes message to Kafka topic {}", kafkaTopic);
         } catch (Exception e) {
             log.error("Failed to send structured BuildingAttributes message: {}", e.getMessage());
